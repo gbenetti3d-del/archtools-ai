@@ -1,7 +1,19 @@
 import { GoogleGenAI, Chat, GenerateContentResponse, FunctionDeclaration, Type } from "@google/genai";
 import { CompanyConfig, UserProfile, EmailLog } from "../types";
 
-const apiKey = process.env.API_KEY || ""; 
+// Safe access to API Key to avoid "process is not defined" crashes in browser environments
+const getApiKey = () => {
+  try {
+    if (typeof process !== "undefined" && process.env) {
+      return process.env.API_KEY || "";
+    }
+  } catch (e) {
+    console.warn("Ambiente sem acesso a process.env");
+  }
+  return "";
+};
+
+const apiKey = getApiKey();
 const ai = new GoogleGenAI({ apiKey });
 
 let chatSession: Chat | null = null;
@@ -46,34 +58,34 @@ const emailTool: FunctionDeclaration = {
 
 // Nova função para gerar relatório analítico via chat
 export const generateSessionReport = async (history: string): Promise<string> => {
-    if (!apiKey) return "API Key não configurada.";
+    if (!apiKey) return "Não foi possível gerar o relatório: API Key não configurada.";
     
-    const reportAI = new GoogleGenAI({ apiKey });
-    const model = reportAI.models.getGenerativeModel({ 
-        model: 'gemini-2.5-flash',
-        config: {
-            temperature: 0.2, // Baixa temperatura para precisão
-        }
-    });
-
-    const prompt = `
-    ATUE COMO UM ANALISTA SÊNIOR DE PROJETOS.
-    Analise o seguinte histórico de conversa entre a I.A. da ArchTools e um cliente.
-    Gere um SUMÁRIO EXECUTIVO ESTRUTURADO (em Markdown) contendo:
-    1. DIAGNÓSTICO: Qual era o problema ou dúvida exata do cliente?
-    2. SOLUÇÃO TÉCNICA: O que foi proposto ou resolvido?
-    3. PRÓXIMOS PASSOS: Ações recomendadas.
-
-    Histórico da conversa:
-    ${history}
-    `;
-
     try {
+        const reportAI = new GoogleGenAI({ apiKey });
+        const model = reportAI.models.getGenerativeModel({ 
+            model: 'gemini-2.5-flash',
+            config: {
+                temperature: 0.2, // Baixa temperatura para precisão
+            }
+        });
+
+        const prompt = `
+        ATUE COMO UM ANALISTA SÊNIOR DE PROJETOS.
+        Analise o seguinte histórico de conversa entre a I.A. da ArchTools e um cliente.
+        Gere um SUMÁRIO EXECUTIVO ESTRUTURADO (em Markdown) contendo:
+        1. DIAGNÓSTICO: Qual era o problema ou dúvida exata do cliente?
+        2. SOLUÇÃO TÉCNICA: O que foi proposto ou resolvido?
+        3. PRÓXIMOS PASSOS: Ações recomendadas.
+
+        Histórico da conversa:
+        ${history}
+        `;
+
         const result = await model.generateContent({ contents: prompt });
         return result.response.text();
     } catch (e) {
         console.error("Erro ao gerar relatório", e);
-        return "Não foi possível gerar o relatório automático.";
+        return "Erro ao gerar o relatório automático. Verifique a configuração da API Key.";
     }
 };
 
@@ -193,6 +205,11 @@ export const initializeChat = (config: CompanyConfig, user: UserProfile) => {
     TOM DE VOZ: ${toneInstruction}
   `;
 
+  // Safely attempt to create chat. If apiKey is missing, it will fail later or log warning.
+  if (!apiKey) {
+      console.error("CRITICAL: API Key missing. Chat initialization will fail.");
+  }
+
   chatSession = ai.chats.create({
     model: 'gemini-2.5-flash',
     config: {
@@ -205,7 +222,13 @@ export const initializeChat = (config: CompanyConfig, user: UserProfile) => {
 
 export const sendMessageToGemini = async function* (message: string, imageBase64?: string): AsyncGenerator<string, void, unknown> {
   if (!chatSession) {
-    throw new Error("Chat session not initialized.");
+    yield "⚠️ Erro de Inicialização: Sessão de chat não encontrada. Tente recarregar a página.";
+    return;
+  }
+
+  if (!apiKey) {
+      yield "⚠️ **Erro de Configuração**: A chave de API (API Key) não foi detectada.\n\nSe você está rodando no Vercel:\n1. Vá em **Settings > Environment Variables**.\n2. Adicione uma chave chamada `API_KEY` com sua chave do Google Gemini.\n3. Faça o Redeploy do projeto.";
+      return;
   }
 
   try {
@@ -306,8 +329,15 @@ ${fc.args['solution']}`;
        }
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error communicating with Gemini:", error);
-    yield "Ocorreu uma instabilidade momentânea no processamento. Por favor, tente novamente.";
+    
+    // Tratamento de erros específicos para ajudar o usuário
+    if (error.toString().includes('403') || error.toString().includes('API key')) {
+        yield "⚠️ **Acesso Negado (Erro 403)**: A API Key configurada é inválida ou não tem permissão. Verifique suas configurações no Vercel.";
+        return;
+    }
+
+    yield "Ocorreu uma instabilidade momentânea na comunicação com a I.A. Por favor, verifique se sua API Key está configurada corretamente nas variáveis de ambiente e tente novamente.";
   }
 };

@@ -31,6 +31,15 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ config, setConf
     reader.readAsText(file);
   };
 
+  const handleSaveAndExit = () => {
+    try {
+      localStorage.setItem('archtools_config', JSON.stringify(config));
+    } catch (e) {
+      console.error("Falha ao salvar configurações localmente", e);
+    }
+    onStartChat();
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 md:p-12 animate-fade-in relative z-10">
       <div className="mb-10 text-center relative">
@@ -179,7 +188,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ config, setConf
 
         <div className="pt-4 flex justify-end">
           <button 
-            onClick={onStartChat}
+            onClick={handleSaveAndExit}
             className="group relative inline-flex items-center justify-center px-8 py-3 text-base font-bold text-white transition-all duration-300 transform hover:scale-105 bg-brand rounded-lg hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
           >
             <span>Salvar e Voltar</span>

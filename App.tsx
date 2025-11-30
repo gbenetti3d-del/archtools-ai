@@ -10,9 +10,25 @@ import { CompanyConfig, ViewState, UserProfile, UIConfig } from './types';
 import { DEFAULT_CONFIG } from './constants';
 import { initializeChat, sendRegistrationNotification } from './services/geminiService';
 
+const STORAGE_KEY = 'archtools_config';
+
 function App() {
   const [viewState, setViewState] = useState<ViewState>(ViewState.START);
-  const [config, setConfig] = useState<CompanyConfig>(DEFAULT_CONFIG);
+  
+  // Initialize config from localStorage if available, otherwise use DEFAULT_CONFIG
+  const [config, setConfig] = useState<CompanyConfig>(() => {
+    try {
+      const savedConfig = localStorage.getItem(STORAGE_KEY);
+      if (savedConfig) {
+        // Merge with default to ensure all fields exist even if schema changes
+        return { ...DEFAULT_CONFIG, ...JSON.parse(savedConfig) };
+      }
+    } catch (error) {
+      console.error("Erro ao carregar configurações:", error);
+    }
+    return DEFAULT_CONFIG;
+  });
+
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
   // UI State
