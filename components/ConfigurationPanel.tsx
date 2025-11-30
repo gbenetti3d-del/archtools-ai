@@ -5,7 +5,7 @@ import { emailLogs } from '../services/geminiService';
 interface ConfigurationPanelProps {
   config: CompanyConfig;
   setConfig: React.Dispatch<React.SetStateAction<CompanyConfig>>;
-  onStartChat: () => void;
+  onStartChat: () => void; // This acts as "Exit Config" now
 }
 
 const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ config, setConfig, onStartChat }) => {
@@ -32,16 +32,26 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ config, setConf
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 md:p-12 animate-fade-in">
-      <div className="mb-10 text-center">
+    <div className="max-w-4xl mx-auto p-6 md:p-12 animate-fade-in relative z-10">
+      <div className="mb-10 text-center relative">
+        <button 
+          onClick={onStartChat} 
+          className="absolute top-0 left-0 text-slate-500 hover:text-white flex items-center gap-2 text-sm font-bold transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          </svg>
+          Sair
+        </button>
+
         <div className="inline-block p-3 rounded-2xl bg-slate-800 text-brand mb-4 shadow-lg border border-slate-700">
            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-blue-400">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
           </svg>
         </div>
-        <h1 className="font-display font-bold text-4xl text-white mb-3 tracking-tight">Treinamento da I.A.</h1>
+        <h1 className="font-display font-bold text-4xl text-white mb-3 tracking-tight">Painel Administrativo</h1>
         <p className="text-slate-400 font-sans text-lg max-w-2xl mx-auto">
-          Alimente a base de conhecimento com seus documentos para que o assistente responda com precisão sobre a <span className="text-blue-400 font-semibold">{config.companyName}</span>.
+          Configuração da base de conhecimento e parâmetros da I.A.
         </p>
       </div>
 
@@ -172,7 +182,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ config, setConf
             onClick={onStartChat}
             className="group relative inline-flex items-center justify-center px-8 py-3 text-base font-bold text-white transition-all duration-300 transform hover:scale-105 bg-brand rounded-lg hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
           >
-            <span>Inicializar Sistema</span>
+            <span>Salvar e Voltar</span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3" />
             </svg>

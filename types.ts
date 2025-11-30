@@ -4,7 +4,6 @@ export interface Message {
   text: string;
   image?: string; // Base64 data URL for UI display
   isStreaming?: boolean;
-  feedback?: 'positive' | 'negative';
 }
 
 export interface CompanyConfig {
@@ -40,6 +39,7 @@ export interface UIConfig {
 
 export enum ViewState {
   CONFIG = 'CONFIG',
+  START = 'START',
   SPLASH = 'SPLASH',
   REGISTER = 'REGISTER',
   CHAT = 'CHAT'

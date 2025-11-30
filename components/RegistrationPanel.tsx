@@ -40,6 +40,8 @@ const RegistrationPanel: React.FC<RegistrationPanelProps> = ({ onComplete, onBac
     if (step === 'FORM') {
       setStep('SELECTION');
     } else {
+      // If we are at selection and back is pressed, we could go back to start screen
+      // But the user requested to remove the specific "Back to Admin" button.
       onBack();
     }
   };
@@ -94,12 +96,6 @@ const RegistrationPanel: React.FC<RegistrationPanelProps> = ({ onComplete, onBac
                 <div className="mt-auto pt-4 flex items-center text-white text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity">
                   Acessar Painel <span className="ml-2">→</span>
                </div>
-            </button>
-         </div>
-
-         <div className="mt-12 text-center">
-            <button onClick={onBack} className="text-slate-500 hover:text-white text-sm transition-colors">
-              Voltar para Configuração (Admin)
             </button>
          </div>
       </div>
@@ -169,71 +165,57 @@ const RegistrationPanel: React.FC<RegistrationPanelProps> = ({ onComplete, onBac
 
           {/* EXTRA FIELDS FOR NEW CLIENTS */}
           {clientType === 'new' && (
-            <div className="space-y-5 animate-fade-in-up">
+            <div className="space-y-4 animate-fade-in pt-2 border-t border-slate-800 mt-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Tipo de Projeto</label>
-                  <select 
-                    value={profile.projectType}
-                    onChange={(e) => setProfile(prev => ({ ...prev, projectType: e.target.value }))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand focus:border-transparent focus:outline-none text-white font-sans"
-                  >
-                    <option value="">Selecione...</option>
-                    <option value="Residencial Alto Padrão">Residencial Alto Padrão</option>
-                    <option value="Comercial / Corporativo">Comercial / Corporativo</option>
-                    <option value="Loteamento / Urbanismo">Loteamento / Urbanismo</option>
-                    <option value="Outro">Outro</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Estágio da Obra</label>
-                  <select 
-                    value={profile.projectStage}
-                    onChange={(e) => setProfile(prev => ({ ...prev, projectStage: e.target.value }))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand focus:border-transparent focus:outline-none text-white font-sans"
-                  >
-                     <option value="">Selecione...</option>
-                    <option value="Concept">Concept</option>
-                    <option value="Terreno / Estudo de Massa">Terreno / Estudo de Massa</option>
-                    <option value="Anteprojeto / Aprovação">Anteprojeto / Aprovação</option>
-                    <option value="Lançamento Iminente">Lançamento Iminente</option>
-                    <option value="Obra Iniciada">Obra Iniciada</option>
-                  </select>
-                </div>
+                 <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Tipo de Projeto</label>
+                    <input 
+                      type="text" 
+                      value={profile.projectType || ''}
+                      onChange={(e) => setProfile(prev => ({ ...prev, projectType: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand focus:border-transparent focus:outline-none text-white font-sans"
+                      placeholder="Ex: Residencial, Comercial"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Estágio da Obra</label>
+                    <input 
+                      type="text" 
+                      value={profile.projectStage || ''}
+                      onChange={(e) => setProfile(prev => ({ ...prev, projectStage: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand focus:border-transparent focus:outline-none text-white font-sans"
+                      placeholder="Ex: Lançamento, Fundação"
+                    />
+                 </div>
               </div>
-
+              
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Informações Importantes / Expectativas</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest font-display">Breve Descrição / Necessidade</label>
                 <textarea 
-                  value={profile.additionalInfo}
+                  value={profile.additionalInfo || ''}
                   onChange={(e) => setProfile(prev => ({ ...prev, additionalInfo: e.target.value }))}
-                  className="w-full h-24 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand focus:border-transparent focus:outline-none text-white font-sans resize-none placeholder-slate-600"
-                  placeholder="Ex: Queremos focar na área de lazer, precisamos de tour virtual para o estande, o conceito é biofilia..."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand focus:border-transparent focus:outline-none text-white font-sans h-24 resize-none"
+                  placeholder="Descreva o que você precisa (ex: Renders internos, Tour Virtual...)"
                 />
               </div>
             </div>
           )}
 
-          <div className="pt-4 flex flex-col gap-3">
-            <button 
-              type="submit"
-              className="w-full py-3.5 rounded-lg font-bold text-white transition-all duration-300 transform hover:scale-[1.02] bg-brand hover:bg-brand-light shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2"
-            >
-              <span>{clientType === 'new' ? 'Solicitar Análise de Projeto' : 'Iniciar Atendimento'}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={handleBack}
-              className="w-full py-3 text-sm font-medium text-slate-500 hover:text-white transition-colors"
-            >
-              Voltar
-            </button>
+          <div className="pt-4 flex items-center justify-between gap-4">
+             <button 
+                type="button"
+                onClick={handleBack}
+                className="px-6 py-3 text-slate-400 hover:text-white font-bold transition-colors"
+             >
+               Voltar
+             </button>
+             <button 
+                type="submit"
+                className="flex-1 bg-brand hover:bg-brand-light text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-brand/40 transition-all transform hover:scale-[1.02]"
+             >
+               Iniciar Chat
+             </button>
           </div>
-
         </form>
       </div>
     </div>

@@ -21,6 +21,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ config, userProfile, onBack, ui
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -69,12 +71,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ config, userProfile, onBack, ui
     setSelectedImage(null);
   };
 
-  const handleFeedback = (messageId: string, type: 'positive' | 'negative') => {
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId ? { ...msg, feedback: msg.feedback === type ? undefined : type } : msg
-    ));
-  };
-
   const handleSend = async () => {
     if ((!inputText.trim() && !selectedImage) || isLoading) return;
 
@@ -121,30 +117,48 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ config, userProfile, onBack, ui
     }
   };
 
+  const copyToClipboard = async (text: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   const handleShare = async () => {
+    setIsAnalysing(true);
+    
+    // Preparar histórico para análise
+    const chatHistory = messages
+      .filter(m => m.text)
+      .map(m => `[${m.role === 'user' ? 'CLIENTE' : 'ARCHTOOLS AI'}]: ${m.text}`)
+      .join('\n');
+
+    // Import function dynamically to avoid circular dependencies
+    const { generateSessionReport } = await import('../services/geminiService');
+    
+    // Gerar Relatório Inteligente
+    const reportSummary = await generateSessionReport(chatHistory);
+
+    setIsAnalysing(false);
+
     const date = new Date().toLocaleDateString('pt-BR');
     const header = `RELATÓRIO DE ATENDIMENTO - ${config.companyName.toUpperCase()}\nDATA: ${date}\nCLIENTE: ${userProfile.name}\nPROJETO: ${userProfile.project}\n------------------------------------------------\n\n`;
 
-    const chatBody = messages
-      .filter(m => m.text)
-      .map(m => {
-        const role = m.role === 'user' ? userProfile.name.toUpperCase() : 'ARCHTOOLS AI';
-        return `[${role}]:\n${m.text}`;
-      })
-      .join('\n\n');
-
-    const chatSummary = header + chatBody;
+    const fullText = header + reportSummary;
 
     const shareData = {
       title: `Relatório ${userProfile.project} - ArchTools`,
-      text: chatSummary,
+      text: fullText,
     };
 
     try {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(chatSummary);
+        await navigator.clipboard.writeText(fullText);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
       }
@@ -207,13 +221,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ config, userProfile, onBack, ui
         <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
           <button 
             onClick={handleShare}
-            className="text-white/70 hover:text-white hover:bg-white/10 px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs md:text-sm font-medium flex items-center gap-2 transition-all border border-transparent hover:border-white/10"
+            disabled={isAnalysing}
+            className="text-white/70 hover:text-white hover:bg-white/10 px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs md:text-sm font-medium flex items-center gap-2 transition-all border border-transparent hover:border-white/10 disabled:opacity-50"
             title="Compartilhar relatório"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-            </svg>
-            <span className="hidden md:inline">Relatório</span>
+            {isAnalysing ? (
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+              </svg>
+            )}
+            <span className="hidden md:inline">{isAnalysing ? 'Analisando...' : 'Relatório'}</span>
           </button>
           
           <button 
@@ -223,7 +245,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ config, userProfile, onBack, ui
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
-            <span className="hidden md:inline">Configurar</span>
+            <span className="hidden md:inline">Início</span>
           </button>
         </div>
       </div>
@@ -248,62 +270,81 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ config, userProfile, onBack, ui
                 {msg.role === 'user' ? userProfile.name.charAt(0).toUpperCase() : 'AI'}
               </div>
 
-              {/* Bubble */}
-              <div 
-                className={`p-3 md:p-4 rounded-xl md:rounded-2xl shadow-sm leading-relaxed ${getTextSizeClass()} backdrop-blur-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-white/10 text-white rounded-tr-none border border-white/20 shadow-inner' 
-                    : 'bg-white text-brand rounded-tl-none shadow-xl'
-                }`}
-              >
-                {/* Render Image if exists */}
-                {msg.image && (
-                  <div className="mb-3 rounded-lg overflow-hidden border border-white/20 bg-black/10">
-                    <img src={msg.image} alt="Upload do usuário" className="max-w-full h-auto max-h-64 object-cover" />
-                  </div>
-                )}
+              <div className="flex flex-col gap-1 w-full">
+                {/* Bubble */}
+                <div 
+                  className={`p-3 md:p-4 rounded-xl md:rounded-2xl shadow-sm leading-relaxed ${getTextSizeClass()} backdrop-blur-sm ${
+                    msg.role === 'user' 
+                      ? 'bg-white/10 text-white rounded-tr-none border border-white/20 shadow-inner' 
+                      : 'bg-white text-brand rounded-tl-none shadow-xl'
+                  }`}
+                >
+                  {/* Render Image if exists */}
+                  {msg.image && (
+                    <div className="mb-3 rounded-lg overflow-hidden border border-white/20 bg-black/10">
+                      <img src={msg.image} alt="Upload do usuário" className="max-w-full h-auto max-h-64 object-cover" />
+                    </div>
+                  )}
 
-                <p className="whitespace-pre-wrap font-sans break-words">{msg.text}</p>
-                {msg.role === 'model' && msg.isStreaming && (
-                  <span className="inline-block w-1.5 h-3 md:h-4 ml-1 align-middle bg-brand animate-pulse"></span>
+                  <p className="whitespace-pre-wrap font-sans break-words">{msg.text}</p>
+                  {msg.role === 'model' && msg.isStreaming && (
+                    <span className="inline-block w-1.5 h-3 md:h-4 ml-1 align-middle bg-brand animate-pulse"></span>
+                  )}
+                </div>
+
+                {/* AI Actions Row */}
+                {msg.role === 'model' && !msg.isStreaming && (
+                  <div className="flex items-center gap-2 ml-1">
+                    <button 
+                      onClick={() => copyToClipboard(msg.text, msg.id)}
+                      className="text-white/40 hover:text-white flex items-center gap-1 text-[10px] md:text-xs transition-colors p-1"
+                      title="Copiar resposta"
+                    >
+                      {copiedMessageId === msg.id ? (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5 text-emerald-400">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                          </svg>
+                          <span className="text-emerald-400 font-medium">Copiado</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                          </svg>
+                          <span>Copiar</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
-
-            {/* Feedback Actions (Only for Model) */}
-            {msg.role === 'model' && !msg.isStreaming && msg.text && (
-              <div className="flex items-center gap-2 mt-1 md:mt-2 ml-10 md:ml-12 opacity-80 hover:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => handleFeedback(msg.id, 'positive')}
-                  className={`p-1 md:p-1.5 rounded-full transition-all ${msg.feedback === 'positive' ? 'bg-white/20 text-white scale-110' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                  title="Resposta útil"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill={msg.feedback === 'positive' ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5 md:w-4 md:h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.287 9.463 4.107 9 5.037 9h.54c.465 0 .743.55.513.978a17.511 17.511 0 0 1-1.597 2.457c.48.514.808 1.154.919 1.872a2.475 2.475 0 0 1-.418 1.791l-.168.169Z" />
-                  </svg>
-                </button>
-                <button 
-                  onClick={() => handleFeedback(msg.id, 'negative')}
-                   className={`p-1 md:p-1.5 rounded-full transition-all ${msg.feedback === 'negative' ? 'bg-white/20 text-white scale-110' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                   title="Resposta não útil"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill={msg.feedback === 'negative' ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5 md:w-4 md:h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 0 1-.068-1.285c0-2.817 1.129-5.372 2.978-7.252.388-.481.987-.728 1.605-.728h4.45c.484 0 .965.078 1.424.23l3.113 1.04a4.501 4.501 0 0 0 1.424.23H17.25m-8.913 9.75h10.966c.889 0 1.713.518 1.972 1.368.257.85.52 1.696.83 2.536.436 1.353-.197 2.836-.522 2.836h-.907c-.466 0-.743-.55-.514-.978.43-1.01.733-2.067.892-3.15.112-.718-.216-1.358-.697-1.872a2.475 2.475 0 0 0 .584-1.791l.169-.168a.75.75 0 0 0-.53-1.28h-3.126c-.618 0-.991-.724-.725-1.282a17.925 17.925 0 0 0 .723-3.218 2.25 2.25 0 0 0-2.25-2.25h-.75V7.48c0 .878-.266 1.745-.769 2.508L6.633 15.25Z" />
-                  </svg>
-                </button>
-              </div>
-            )}
           </div>
         ))}
+        {/* Skeleton Loader Animation for AI Response */}
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
-          <div className="flex justify-start gap-2 md:gap-3">
-             <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white text-brand flex items-center justify-center text-[10px] md:text-xs font-bold shadow-lg">AI</div>
-             <div className="bg-white p-3 md:p-4 rounded-xl md:rounded-2xl rounded-tl-none shadow-lg flex gap-1.5 items-center">
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-brand rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-brand rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-brand rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+           <div className="flex flex-col items-start w-full animate-fade-in">
+             <div className="flex max-w-[85%] md:max-w-[75%] flex-row gap-2 md:gap-3">
+               {/* Skeleton Avatar */}
+               <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex-shrink-0 bg-white/20 animate-pulse border border-white/10"></div>
+               
+               {/* Skeleton Bubble */}
+               <div className="p-4 md:p-5 rounded-xl md:rounded-2xl rounded-tl-none shadow-xl bg-white w-full space-y-3 relative overflow-hidden">
+                  {/* Shimmer Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-100%] animate-[shimmer_1.5s_infinite]"></div>
+                  
+                  {/* Content Lines */}
+                  <div className="h-4 bg-slate-200 rounded w-1/3 animate-pulse"></div>
+                  <div className="space-y-2 pt-1">
+                     <div className="h-3 bg-slate-100 rounded w-full animate-pulse"></div>
+                     <div className="h-3 bg-slate-100 rounded w-[90%] animate-pulse"></div>
+                     <div className="h-3 bg-slate-100 rounded w-[95%] animate-pulse"></div>
+                     <div className="h-3 bg-slate-100 rounded w-2/3 animate-pulse"></div>
+                  </div>
+               </div>
              </div>
-          </div>
+           </div>
         )}
         <div ref={messagesEndRef} className="h-1" />
       </div>
