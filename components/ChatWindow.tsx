@@ -43,9 +43,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ config, userProfile, onBack, ui
     const lastMessage = messages[messages.length - 1];
     const isStreaming = lastMessage?.role === 'model' && lastMessage?.isStreaming;
 
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: isStreaming ? 'auto' : 'smooth', 
+    if (isStreaming) {
+      // Direct DOM manipulation for instant scrolling during streaming (prevents jitter)
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    } else {
+      // Smooth scroll for new messages
+      messagesEndRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
         block: 'end' 
       });
     }
